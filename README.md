@@ -41,6 +41,51 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor
 .list{list-style:none;padding:0;margin:8px 0 18px;font-size:16px;line-height:1.9}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:9}
 
+
+/* ===== 單張放大刮刮樂視窗 ===== */
+#cardModal{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:100;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(30,10,25,.72);
+  backdrop-filter:blur(6px);
+}
+#cardModal.on{display:flex}
+#modalBox{
+  width:min(92vw,430px);
+  max-height:92vh;
+  overflow:auto;
+  box-sizing:border-box;
+  padding:18px;
+  border-radius:26px;
+  background:linear-gradient(180deg,#fff,#fff5fa);
+  box-shadow:0 20px 60px rgba(0,0,0,.35);
+  text-align:center;
+  animation:popCard .28s ease-out;
+}
+@keyframes popCard{from{transform:scale(.72);opacity:0}to{transform:scale(1);opacity:1}}
+#modalHint{font-size:19px;font-weight:800;color:#e8457f;margin-bottom:12px}
+#bigTicket{
+  position:relative;
+  width:min(78vw,340px);
+  aspect-ratio:3/4;
+  margin:0 auto 14px;
+  border-radius:20px;
+  overflow:hidden;
+  background:#fff;
+  border:4px solid #fff;
+  box-shadow:0 8px 24px rgba(214,69,143,.28);
+}
+#bigTicket .prize{visibility:visible}
+#bigTicket canvas{z-index:5}
+#bigTicket.locked canvas{pointer-events:none;cursor:default}
+#startScratch{display:inline-block;margin:4px 0 10px}
+#backBtn{display:inline-block}
+
 /* ===== 單張挑選模式 ===== */
 .grid{grid-template-columns:repeat(2,1fr)}
 .ticket{cursor:pointer;transition:transform .25s ease,box-shadow .25s ease}
@@ -56,7 +101,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor
 <div id="cardModal">
   <div id="modalBox">
     <div id="modalHint">✨ 刮開這一張看看！</div>
-    <div id="bigTicket"></div>
+    <div id="bigTicket" class="locked"></div>
+    <button id="startScratch">✨ 開始刮這張</button>
     <button id="backBtn">↩️ 刮完了，回去選下一張</button>
   </div>
 </div>
@@ -181,15 +227,28 @@ function openCard(i){
   state.current=i;
   const modal=$("cardModal"), big=$("bigTicket");
   big.innerHTML=buildPrizeHTML(PRIZES[i]);
+  big.classList.add("locked");
   const c=document.createElement("canvas");
   big.appendChild(c);
   modal.classList.add("on");
-  $("modalHint").textContent=`第 ${i+1} 張｜慢慢刮開看看 ✨`;
+  $("modalHint").textContent=`第 ${i+1} 張｜先看看這張，再開始刮 ✨`;
+  $("startScratch").style.display="inline-block";
+  $("backBtn").style.display="none";
+
   const scratcher=makeScratch(c,()=>finishCard(i));
+  window._currentScratcher=scratcher;
   window.addEventListener("resize",()=>{
     if(modal.classList.contains("on")) scratcher.resize();
-  },{once:true});
+  });
 }
+
+$("startScratch").addEventListener("click",()=>{
+  const big=$("bigTicket");
+  big.classList.remove("locked");
+  $("startScratch").style.display="none";
+  $("backBtn").style.display="inline-block";
+  $("modalHint").textContent="🪙 現在可以開始刮了！刮開看看是什麼驚喜 💝";
+});
 
 function finishCard(i){
   state.done.add(i);
@@ -199,6 +258,9 @@ function finishCard(i){
 
 $("backBtn").addEventListener("click",()=>{
   $("cardModal").classList.remove("on");
+  $("bigTicket").classList.add("locked");
+  $("startScratch").style.display="inline-block";
+  $("backBtn").style.display="none";
   state.current=-1;
   renderGrid();
 });
